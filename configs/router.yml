@@ -1,0 +1,5 @@
+router:
+  strategy: mf
+  cost_threshold: 0.5
+  strong_model: "claude-sonnet"
+  weak_model: "gpt-4o-mini"

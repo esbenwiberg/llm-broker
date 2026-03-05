@@ -1,0 +1,8 @@
+repo: internal-tooling
+allowed_providers:
+  - anthropic-saas
+  - openai-saas
+  - local
+data_residency: any
+max_tier: premium
+pii_handling: allow

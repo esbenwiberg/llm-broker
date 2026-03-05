@@ -1,0 +1,9 @@
+services:
+  broker:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./configs:/app/configs:ro
+    environment:
+      - CONFIG_DIR=/app/configs

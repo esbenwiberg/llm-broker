@@ -1,0 +1,132 @@
+# ---------------------------------------------------------------------------
+# CI/CD Pipeline — Build, test, and deploy LLM Broker to Azure Container App
+#
+# Triggers on push to main. Runs the test suite first, then builds the
+# Docker image, pushes to ACR, and deploys the Container App.
+#
+# Required GitHub Secrets:
+#   AZURE_CREDENTIALS   — Service principal JSON for Azure login
+#                          (output of: az ad sp create-for-rbac --sdk-auth)
+#   ANTHROPIC_API_KEY   — Anthropic provider API key
+#   AZURE_API_KEY       — Azure provider API key
+#   OPENAI_API_KEY      — OpenAI provider API key
+#
+# Optional GitHub Variables:
+#   RESOURCE_GROUP      — Azure resource group  (default: llm-broker-rg)
+#   LOCATION            — Azure region          (default: westeurope)
+#   ENVIRONMENT_NAME    — Base name for resources (default: llm-broker)
+# ---------------------------------------------------------------------------
+
+name: Deploy LLM Broker
+
+on:
+  push:
+    branches: [main]
+
+env:
+  RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP || 'llm-broker-rg' }}
+  LOCATION: ${{ vars.LOCATION || 'westeurope' }}
+  ENVIRONMENT_NAME: ${{ vars.ENVIRONMENT_NAME || 'llm-broker' }}
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  # -----------------------------------------------------------------------
+  # Job 1: Run tests
+  # -----------------------------------------------------------------------
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run test suite
+        run: pytest tests/ -v
+
+  # -----------------------------------------------------------------------
+  # Job 2: Build, push, and deploy (runs only after tests pass)
+  # -----------------------------------------------------------------------
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Ensure the resource group exists (idempotent)
+      - name: Create resource group
+        run: |
+          az group create \
+            --name "${{ env.RESOURCE_GROUP }}" \
+            --location "${{ env.LOCATION }}" \
+            --output none
+
+      # Deploy Bicep to create/update ACR + Container App Environment + App
+      - name: Deploy Bicep template
+        id: bicep
+        run: |
+          OUTPUT=$(az deployment group create \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --template-file infra/containerapp.bicep \
+            --parameters \
+              environmentName="${{ env.ENVIRONMENT_NAME }}" \
+              imageName="${{ env.ENVIRONMENT_NAME }}:${{ env.IMAGE_TAG }}" \
+              anthropicApiKey="${{ secrets.ANTHROPIC_API_KEY }}" \
+              azureApiKey="${{ secrets.AZURE_API_KEY }}" \
+              openaiApiKey="${{ secrets.OPENAI_API_KEY }}" \
+            --query "properties.outputs" \
+            --output json)
+
+          ACR_SERVER=$(echo "$OUTPUT" | jq -r '.acrLoginServer.value')
+          APP_URL=$(echo "$OUTPUT" | jq -r '.appUrl.value')
+
+          echo "acr_server=${ACR_SERVER}" >> "$GITHUB_OUTPUT"
+          echo "app_url=${APP_URL}" >> "$GITHUB_OUTPUT"
+
+      # Log in to ACR so Docker can push
+      - name: Log in to ACR
+        run: |
+          ACR_NAME=$(echo "${{ steps.bicep.outputs.acr_server }}" | cut -d'.' -f1)
+          az acr login --name "${ACR_NAME}"
+
+      # Build and push the Docker image
+      - name: Build and push Docker image
+        run: |
+          FULL_IMAGE="${{ steps.bicep.outputs.acr_server }}/${{ env.ENVIRONMENT_NAME }}:${{ env.IMAGE_TAG }}"
+          docker build -t "${FULL_IMAGE}" .
+          docker push "${FULL_IMAGE}"
+
+      # Update the Container App to use the new image revision
+      - name: Deploy Container App revision
+        run: |
+          FULL_IMAGE="${{ steps.bicep.outputs.acr_server }}/${{ env.ENVIRONMENT_NAME }}:${{ env.IMAGE_TAG }}"
+          az containerapp update \
+            --name "${{ env.ENVIRONMENT_NAME }}" \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --image "${FULL_IMAGE}" \
+            --output none
+
+      # Smoke test — hit the health endpoint
+      - name: Smoke test
+        run: |
+          echo "Waiting for app to start..."
+          sleep 15
+          APP_URL="${{ steps.bicep.outputs.app_url }}"
+          echo "Testing: ${APP_URL}/health"
+          curl --fail --retry 3 --retry-delay 5 "${APP_URL}/health"
+          echo ""
+          echo "Deployment successful: ${APP_URL}"

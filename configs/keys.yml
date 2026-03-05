@@ -1,0 +1,7 @@
+keys:
+  sk-fintech-abc123:
+    repo: fintech-app
+    team: fintech-squad
+  sk-internal-xyz789:
+    repo: internal-tooling
+    team: platform-team

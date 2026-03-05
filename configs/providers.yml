@@ -1,0 +1,64 @@
+providers:
+  anthropic-saas:
+    litellm_prefix: "anthropic/"
+    region: us
+    deployment: saas
+    models:
+      - id: claude-haiku
+        litellm_model: "anthropic/claude-3-5-haiku-20241022"
+        tier: standard
+        quality: 0.6
+        cost_per_1k_tokens: 0.001
+      - id: claude-sonnet
+        litellm_model: "anthropic/claude-sonnet-4-20250514"
+        tier: premium
+        quality: 0.9
+        cost_per_1k_tokens: 0.015
+
+  azure-foundry:
+    litellm_prefix: "azure/"
+    region: eu
+    deployment: managed
+    models:
+      - id: azure-claude
+        litellm_model: "azure/claude-sonnet"
+        tier: premium
+        quality: 0.9
+        cost_per_1k_tokens: 0.015
+      - id: azure-gpt4o
+        litellm_model: "azure/gpt-4o"
+        tier: premium
+        quality: 0.85
+        cost_per_1k_tokens: 0.01
+
+  openai-saas:
+    litellm_prefix: "openai/"
+    region: us
+    deployment: saas
+    models:
+      - id: gpt-4o
+        litellm_model: "openai/gpt-4o"
+        tier: premium
+        quality: 0.85
+        cost_per_1k_tokens: 0.01
+      - id: gpt-4o-mini
+        litellm_model: "openai/gpt-4o-mini"
+        tier: standard
+        quality: 0.5
+        cost_per_1k_tokens: 0.0006
+
+  local:
+    litellm_prefix: "ollama/"
+    region: local
+    deployment: on-prem
+    models:
+      - id: qwen3
+        litellm_model: "ollama/qwen3"
+        tier: free
+        quality: 0.4
+        cost_per_1k_tokens: 0.0
+      - id: llama
+        litellm_model: "ollama/llama3.1"
+        tier: free
+        quality: 0.45
+        cost_per_1k_tokens: 0.0

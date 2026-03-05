@@ -1,0 +1,6 @@
+repo: fintech-app
+allowed_providers:
+  - azure-foundry
+data_residency: eu
+max_tier: premium
+pii_handling: redact
