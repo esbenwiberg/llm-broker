@@ -39,6 +39,8 @@ logger = logging.getLogger(__name__)
 _RETRYABLE_EXCEPTIONS: tuple[type[BaseException], ...] = (
     litellm.exceptions.APIError,
     litellm.exceptions.APIConnectionError,
+    litellm.exceptions.AuthenticationError,
+    litellm.exceptions.NotFoundError,
     litellm.exceptions.RateLimitError,
     litellm.exceptions.Timeout,
     litellm.exceptions.ServiceUnavailableError,

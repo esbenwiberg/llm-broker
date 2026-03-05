@@ -5,12 +5,13 @@ providers:
     deployment: saas
     models:
       - id: claude-haiku
-        litellm_model: "anthropic/claude-3-5-haiku-20241022"
+        litellm_model: "anthropic/claude-haiku-4-5-20251001"
         tier: standard
         quality: 0.6
         cost_per_1k_tokens: 0.001
       - id: claude-sonnet
         litellm_model: "anthropic/claude-sonnet-4-20250514"
+        # also valid: claude-sonnet-4-6-20250527
         tier: premium
         quality: 0.9
         cost_per_1k_tokens: 0.015

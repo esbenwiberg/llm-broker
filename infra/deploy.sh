@@ -32,10 +32,11 @@ ENVIRONMENT_NAME="${ENVIRONMENT_NAME:-llm-broker}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 IMAGE_NAME="${ENVIRONMENT_NAME}:${IMAGE_TAG}"
 
-# Provider API keys (pass via env vars or they default to empty strings)
-ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}"
-AZURE_API_KEY="${AZURE_API_KEY:-}"
-OPENAI_API_KEY="${OPENAI_API_KEY:-}"
+# Provider API keys (pass via env vars; use "placeholder" if unset since
+# Azure Container Apps rejects empty secret values)
+ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-placeholder}"
+AZURE_API_KEY="${AZURE_API_KEY:-placeholder}"
+OPENAI_API_KEY="${OPENAI_API_KEY:-placeholder}"
 
 # Resolve the project root (one level up from infra/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
